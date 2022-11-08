@@ -27,7 +27,7 @@ export const DepositModal = ({ maxBalance, token, account } : any) => {
       
   return (
     <>
-      <Button colorScheme='teal' variant='outline' _hover={{bgColor: 'whiteAlpha.400'}} size={'sm'} onClick={onOpen}>
+      <Button color={'#576d91'} borderColor={'#576d91'} variant='outline' _hover={{bgColor: 'transparent'}} size={'sm'} onClick={onOpen}>
         Deposit
       </Button>
       <Modal
@@ -38,7 +38,7 @@ export const DepositModal = ({ maxBalance, token, account } : any) => {
         size={modalSize}
       >
         <Overlay />
-        <ModalContent py="2.5rem" bgColor={'#082129'}>
+        <ModalContent py="2.5rem" bgColor={'#191d28'}>
           <ModalCloseButton />
           <Box>
             <ModalBody textAlign={"center"} px={16} py={12}>

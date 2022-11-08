@@ -21,18 +21,25 @@ export const Deposit = () => {
 
   const loader: any = useLoaderData()
 
-  return ( 
-      <VStack flexGrow={1} w='full' justifyContent={'flex-start'} alignItems={'center'} spacing={3} my={20}>
+  return (
+    <Flex w={'full'} justifyContent={'center'} alignItems={'center'}>
+      <VStack gap={0} spacing={0} flexGrow={1} maxW={{base: '100%', md: '80%'}} bgColor={'#1b1f29'} justifyContent={'flex-start'} borderRadius={'lg'} p={{base: 0, md: 10}} alignItems={'center'} my={20}>
         {loader !== null ?
           <>
-            <Heading fontSize={'3xl'}  w={'80%'} textAlign={'left'} justifySelf={'flex-start'}>All Assets</Heading>
+            <Heading fontSize={'3xl'} mb={5} w={'100%'} textAlign={'left'} justifySelf={'flex-start'}>All Assets</Heading>
             {loader.tokens.map((token: any, index: number) => (
               <Token token={token} key={index} balance={loader.balances[index]}/>
             ))}
           </>
-          : 
-        	<Text>Please Connect Metamask</Text>
+          :
+          <>
+            <Image ml={'2'} w={'76px'} src={'/metamask-fox.svg'} />
+            <Text>Please Connect Metamask</Text>
+          </>
+
         }
       </VStack>
+    </Flex>
+
   )
 }

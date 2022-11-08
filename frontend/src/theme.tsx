@@ -10,7 +10,7 @@ const theme = extendTheme({
     styles: {
 		global: (props: any) => ({
 			body: {
-				bg: '#000000',
+				bg: '#12141a',
 				color: 'white'
 			},
 			'::-webkit-scrollbar': {

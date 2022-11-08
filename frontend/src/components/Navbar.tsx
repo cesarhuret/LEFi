@@ -61,8 +61,7 @@ export default function Navbar() {
 				bg={'transparent'}
 				color={useColorModeValue('white', 'white')}
 				borderBottomWidth={'0.05em'}
-				boxShadow={'lg'}
-				borderBottomColor={'#2b2b2b'}
+				borderBottomColor={'#1e232e'}
 				minH={'9.1vh'}
 				py={{ base: 2 }}
 				px={{ base: 4, md: '10%' }}
@@ -82,7 +81,7 @@ export default function Navbar() {
 						aria-label={'Toggle Navigation'}
 					/>
 				</Flex>
-				<Flex flex={{ base: 1 }} justify={{ base: 'center', md: 'start' }}>
+				<Flex flex={{ base: 1 }} justify={{ base: 'center', md: 'start' }} alignItems={'center'}>
 					<Link to={'/'}>
 						<Image src={'/logo.png'} width={'64px'} height={'33.5px'}/>
 					</Link>
@@ -122,22 +121,25 @@ export default function Navbar() {
 	}
 
 	const activeStyle = {
-		fontWeight: "light",
+		fontWeight: "semibold",
 		fontSize: '0.8em',
 		color: '#ffffff'
 	}
 	
 	const inactiveStyle = {
 		fontSize: '0.8em',
-		fontWeight: "light",
-		color: '#bfbfbf'
+		fontWeight: "semibold",
+		color: '#576d91',
+		_hover: {
+			bgColor: 'red.300',
+		}
 	}
 	
 	const DesktopNav = () => {
 		return (
-		<Stack direction={'row'} spacing={7}>
+		<Stack direction={'row'} spacing={4}>
 			{NAV_ITEMS.map((navItem) => (
-			<Box key={navItem.label} alignSelf={'center'}>
+			<Box key={navItem.label} alignSelf={'center'} _hover={{background: '#272e3d', transitionDuration: '300ms' }} borderRadius={'md'} px={4} py={2}>
 				<NavLink
 					to={navItem.href ?? '#'}
 					style={({ isActive }: any) =>

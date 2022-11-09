@@ -131,7 +131,7 @@ const DepositForm = ({ max, token, account, isAllowed }: any) => {
               getSwitcherContract()
               .then(async (contract :any) => {
                 try {
-                  const tx = await contract.deposit((amount*1000000).toString(), ethers.utils.parseUnits((healthFactor/10).toString(), 1), (loan*1000000).toString(), { gasLimit: 5000000 });
+                  const tx = await contract.deposit((amount*1000000).toString(), ethers.utils.parseUnits((healthFactor/10).toString(), 1), (loan*1000000).toString(), { gasLimit: 1000000 });
                   const result = await tx.wait();
                   console.log(result)
                 } catch(e) {

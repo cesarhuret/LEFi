@@ -12,9 +12,9 @@
     "tokens": [
       {
         "chainId": 5,
-        "address": "0x693FaeC006aeBCAE7849141a2ea60c6dd8097E25",
+        "address": "0xA2025B15a1757311bfD68cb14eaeFCc237AF5b43",
         "name": "USD Coin",
-        "mainnetAddress": "0x693FaeC006aeBCAE7849141a2ea60c6dd8097E25",
+        "mainnetAddress": "0xA2025B15a1757311bfD68cb14eaeFCc237AF5b43",
         "symbol": "USDC",
         "decimals": 6,
         "logoURI": "https://assets.coingecko.com/coins/images/6319/large/USD_Coin_icon.png?1547042389"

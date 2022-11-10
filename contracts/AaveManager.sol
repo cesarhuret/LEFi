@@ -110,7 +110,7 @@ contract AaveManager {
             0
         );
         
-        // // deposit the rest of the balance in Yearn
+        // deposit the rest of the balance in Yearn
         // yVault.deposit(
         //     collateral - (healthRatio*loanValueInCollateralToken)/100,
         //     address(this)
@@ -128,13 +128,13 @@ contract AaveManager {
 
         // Borrow from AAVE
         // Receives Link
-        // aPool.borrow(
-        //     borrowedToken,
-        //     1000000000000000000,
-        //     1,
-        //     0,
-        //     msg.sender
-        // );
+        aPool.borrow(
+            borrowedToken,
+            loanValueInBorrowedToken,
+            2,
+            0,
+            address(this)
+        );
 
         // send back the borrowed token to the user
         // IERC20(borrowedToken).transfer(msg.sender, loanValueInBorrowedToken);

@@ -1,1 +1,1 @@
-export const EulerManager = "0x0Daa7fcdcA2f40bFc2D0e008dA90f6fB9CC4F197";
+export const EulerManager = "0x0D24D81A8Bc242E7a6fB91783513393fB0C91db3";

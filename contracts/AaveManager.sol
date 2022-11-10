@@ -3,15 +3,20 @@ pragma solidity ^0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IPool } from "@aave/core-v3/contracts/interfaces/IPool.sol";
+import { VaultAPI } from "./interfaces/Yearn/BaseStrategy.sol";
 
 contract AaveManager {
     
-    // address public collateralToken = 0xA2025B15a1757311bfD68cb14eaeFCc237AF5b43; // USDC
-    // address public borrowedToken = 0x2e3A2fb8473316A02b8A297B982498E661E1f6f5; // WETH
+    address public immutable collateralToken; // USDC
+    address public immutable borrowedToken; // WETH
     address public cAToken; // aUSDC
     address public bAToken; // aWETH
-    address public poolAddress = 0x368EedF3f56ad10b9bC57eed4Dac65B26Bb667f6; // AAVE Pool Goerli
-    IPool Pool = IPool(0x368EedF3f56ad10b9bC57eed4Dac65B26Bb667f6);
+    address public immutable poolAddress;
+    address public immutable yVaultAddress;
+    IPool public immutable aPool;
+    VaultAPI public immutable yVault;
+    IERC20 public immutable YTestToken;
+
 
     mapping(address => uint256) public balances;
     mapping(address => uint256) public healthRatios;
@@ -33,15 +38,23 @@ contract AaveManager {
         uint256 healthFactor;
     }
 
-    constructor() {
+    constructor (
 
+    ) {
+        poolAddress = 0x368EedF3f56ad10b9bC57eed4Dac65B26Bb667f6;
+        yVaultAddress = 0xD29f4E410ABDAAfdBb6b011aC854aC170E92f07A;
+        
+        aPool = IPool(0x368EedF3f56ad10b9bC57eed4Dac65B26Bb667f6); // Aave Pool Goerli
+        yVault = VaultAPI(0xD29f4E410ABDAAfdBb6b011aC854aC170E92f07A); // My Testing Goerli yVault
+        
+        YTestToken = IERC20(0xF8EBaF73Fc7da042494857822976cD8F02263B49); // Just a Testing Token for Yearn on Goerli
+        collateralToken = 0xA2025B15a1757311bfD68cb14eaeFCc237AF5b43; // USDC
+        borrowedToken = 0x07C725d58437504CA5f814AE406e70E21C5e8e9e; // Link
     }
 
     function deposit(
         uint256 collateral,
         uint256 healthRatio,
-        address collateralToken,
-        address borrowedToken,
         uint256 loanValueInCollateralToken,
         uint256 loanValueInBorrowedToken
     ) 
@@ -82,14 +95,26 @@ contract AaveManager {
             type(uint).max
         );
 
+        // Approve Yearn Vault contract to spend USDC
+        YTestToken.approve(
+            yVaultAddress,
+            type(uint).max
+        );
+
         // supply to AAVE
         // Receives aEthUSDC
-        Pool.supply(
+        aPool.supply(
             collateralToken,
-            loanValueInCollateralToken,
+            (healthRatio*loanValueInCollateralToken)/100,
             address(this),
             0
         );
+        
+        // // deposit the rest of the balance in Yearn
+        // yVault.deposit(
+        //     collateral - (healthRatio*loanValueInCollateralToken)/100,
+        //     address(this)
+        // );
 
         // Add the deposited tokens into existing balance 
         balances[msg.sender] += collateral;
@@ -101,22 +126,18 @@ contract AaveManager {
             (healthRatio*loanValueInCollateralToken)/100
         );
 
-        // deposit the rest of the balance in Yearn
-
-
-
         // Borrow from AAVE
-        // Receives aWETH
-        Pool.borrow(
-            borrowedToken,
-            loanValueInBorrowedToken,
-            1,
-            0,
-            address(this)
-        );
+        // Receives Link
+        // aPool.borrow(
+        //     borrowedToken,
+        //     1000000000000000000,
+        //     1,
+        //     0,
+        //     msg.sender
+        // );
 
         // send back the borrowed token to the user
-        IERC20(borrowedToken).transfer(msg.sender, loanValueInBorrowedToken);
+        // IERC20(borrowedToken).transfer(msg.sender, loanValueInBorrowedToken);
 
     }
 

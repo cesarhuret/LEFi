@@ -60,7 +60,7 @@ contract Manager {
         // Interact with Euler to deposit the tokens
         eToken.deposit(0, (healthRatio*loan)/100);
 
-        // Enter Euler market to receiver eUSDC
+        // Enter Euler market to receive eUSDC
         markets.enterMarket(0, collateralToken);
         emit Deposit(collateral);
 

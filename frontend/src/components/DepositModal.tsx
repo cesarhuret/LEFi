@@ -131,12 +131,22 @@ const DepositForm = ({ max, token, account, isAllowed }: any) => {
               getSwitcherContract()
               .then(async (contract :any) => {
                 try {
+                  // uint256 _totalDeposit,
+                  // uint256 _collateral,
+                  // address _borrowToken,
+                  // uint256 _loanValueInBorrowedToken
+                  const data = await contract.getTotalBorrowedAmountInBase('0x7e764ef3ca3a1f2ed4e4ce6ad162021148b09460');
+                  console.log(data)
+
+                  const lol = await contract.getAssetPrice('0x2e3A2fb8473316A02b8A297B982498E661E1f6f5');
+                  console.log(lol)
+
                   const tx = await contract.deposit(
-                    (100*1000000).toString(),
-                    ethers.utils.parseUnits((150/10).toString(), 1),
-                    (30*1000000).toString(),
-                    (1*1000000000000000000).toString(),
-                    { gasLimit: 5000000 }
+                    (100).toString(),
+                    (45).toString(),
+                    '0x07C725d58437504CA5f814AE406e70E21C5e8e9e',
+                    (1).toString(),
+                    { gasLimit: 1000000 }
                   );
                   const result = await tx.wait();
                   console.log(result)
@@ -149,6 +159,99 @@ const DepositForm = ({ max, token, account, isAllowed }: any) => {
           >
             Deposit & Create Loan
           </Button>
+          <Button
+            colorScheme='red'
+            variant='outline'
+            _hover={{bgColor: 'whiteAlpha.400'}}
+            w={'full'}
+            onClick={() => {
+              getSwitcherContract()
+              .then(async (contract :any) => {
+                try {
+                  const tx = await (await getTokenContract('0x07C725d58437504CA5f814AE406e70E21C5e8e9e')).approve(
+                    EulerManager,
+                    ethers.constants.MaxUint256
+                  );
+                  const result = await tx.wait();
+
+                } catch(e) {
+                  console.log(e)
+                }
+              })
+            }}
+            isDisabled={amount > max}
+          >
+            Approve Contract
+          </Button>
+          <Button
+            colorScheme='red'
+            variant='outline'
+            _hover={{bgColor: 'whiteAlpha.400'}}
+            w={'full'}
+            onClick={() => {
+              getSwitcherContract()
+              .then(async (contract :any) => {
+                try {
+                  const data = await contract.getDebtInBorrowedToken('0x07C725d58437504CA5f814AE406e70E21C5e8e9e');
+                  console.log(data)
+
+                  // uint256 _totalWithdrawal,
+                  // uint256 _amountToRepayInBorrowed,
+                  // uint256 _amountToRepayInBase,
+                  // uint256 _amountToWithdrawInBase,
+                  // uint256 _amountToUnstake,
+                  // address _borrowToken
+                  const tx = await contract.withdraw(
+                    (100*1000000).toString(),
+                    (500000000000000000).toString(),
+                    (15*1000000).toString(),
+                    (22.5*1000000).toString(),
+                    (0).toString(),
+                    '0x07C725d58437504CA5f814AE406e70E21C5e8e9e',
+                    { gasLimit: 1000000 });
+                  const result = await tx.wait();
+
+                } catch(e) {
+                  console.log(e)
+                }
+              })
+            }}
+            isDisabled={amount > max}
+          >
+            Widthdraw Tokens
+          </Button>
+          <Button
+            colorScheme='red'
+            variant='outline'
+            _hover={{bgColor: 'whiteAlpha.400'}}
+            w={'full'}
+            onClick={() => {
+              getSwitcherContract()
+              .then(async (contract :any) => {
+                try {
+                  const data = await contract.getDebtInBorrowedToken('0x07C725d58437504CA5f814AE406e70E21C5e8e9e');
+                  console.log(data)
+
+                  // uint256 _totalWithdrawal,
+                  // uint256 _amountToRepayInBorrowed,
+                  // uint256 _amountToRepayInBase,
+                  // uint256 _amountToWithdrawInBase,
+                  // uint256 _amountToUnstake,
+                  // address _borrowToken
+                  const tx = await contract.setNewPositionHealthRatio(
+                    (150).toString(),
+                    { gasLimit: 1000000 });
+                  const result = await tx.wait();
+
+                } catch(e) {
+                  console.log(e)
+                }
+              })
+            }}
+            isDisabled={amount > max}
+          >
+            Set New Health Ratio
+          </Button>
         </>
         : <Button
             colorScheme='teal'
@@ -157,11 +260,41 @@ const DepositForm = ({ max, token, account, isAllowed }: any) => {
             w={'full'}
             onClick={async () => {
                 try {
-                  const tx = await (await getTokenContract(token)).approve(
-                    EulerManager,
-                    ethers.constants.MaxUint256
-                  );
-                  console.log(tx)
+                  
+                  // const tx = await (await getTokenContract(token)).approve(
+                  //   EulerManager,
+                  //   ethers.constants.MaxUint256
+                  // );
+                  
+                  // console.log(tx)
+                
+                  getSwitcherContract()
+                  .then(async (contract :any) => {
+                    try {
+                      // uint256 _totalDeposit,
+                      // uint256 _collateral,
+                      // address _borrowToken,
+                      // uint256 _loanValueInBorrowedToken
+                      const data = await contract.getTotalBorrowedAmountInBase('0x7e764ef3ca3a1f2ed4e4ce6ad162021148b09460');
+                      console.log(data)
+    
+                      const lol = await contract.getAssetPrice('0x2e3A2fb8473316A02b8A297B982498E661E1f6f5');
+                      console.log(lol)
+    
+                      const tx = await contract.deposit(
+                        (100*1000000).toString(),
+                        (45*1000000).toString(),
+                        '0x07C725d58437504CA5f814AE406e70E21C5e8e9e',
+                        (1*1000000000000000000).toString(),
+                        { gasLimit: 1000000 }
+                      );
+                      const result = await tx.wait();
+                      console.log(result)
+                    } catch(e) {
+                      console.log(e)
+                    }
+                  })
+                
                 } catch(e) {
                   console.log(e)
                 }

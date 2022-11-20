@@ -20,14 +20,19 @@ module.exports = {
     artifacts: "./artifacts",
   },
   networks: {
-    goerli: {
-      url: `https://eth-goerli.alchemyapi.io/v2/y9Hwv9sPpVTdg653ZwbBEJQTiwHTmCQw`,
-      accounts: ['aed18517b02566597ac057394f9ab24468c5f31215030ac25df06448db7d909e']
+    hardhat: {
+      forking: {
+        url: "https://goerli.infura.io/v3/1d89957478604b6d9da08cbb9151b746",
+      }
+    },
+    localhost: {
+      url: `http://127.0.0.1:8545/`,
+      accounts: [''] //0x14dC79964da2C08b23698B3D3cc7Ca32193d9955
     }
   },
   etherscan: {
     // Your API key for Etherscan
     // Obtain one at https://etherscan.io/
-    apiKey: '7F9FANI79KMS5W817Z41IXA12NIT1UWPKE',
+    apiKey: '7F9FANI79KMS5W817Z41IXA12NIT1UWPKE', // Free API Key btw, get your own lol
   },
 };

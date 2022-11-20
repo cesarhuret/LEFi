@@ -2,80 +2,85 @@
 pragma solidity ^0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/interfaces/IERC20Metadata.sol";
 import { IPool } from "@aave/core-v3/contracts/interfaces/IPool.sol";
+import { IAaveOracle } from "@aave/core-v3/contracts/interfaces/IAaveOracle.sol";
 import { VaultAPI } from "./interfaces/Yearn/BaseStrategy.sol";
+import "./Base.sol";
 
-contract AaveManager {
-    
-    address public immutable collateralToken; // USDC
-    address public immutable borrowedToken; // WETH
-    address public cAToken; // aUSDC
-    address public bAToken; // aWETH
+/**
+ * @author  Cesar Huret
+ * @title   AaveManager
+ * @dev     .
+ * @notice  .
+ */
+
+contract AaveManager is Base {
+
     address public immutable poolAddress;
     address public immutable yVaultAddress;
     IPool public immutable aPool;
     VaultAPI public immutable yVault;
     IERC20 public immutable YTestToken;
-
-
-    mapping(address => uint256) public balances;
-    mapping(address => uint256) public healthRatios;
-
-    event Withdrawal(uint256 amount);
-    event Deposit(uint256 amount);
-    event VerifySettings(address token, uint256 healthRatio);
-    event Rebalance(address _beneficiary, address _owner, uint256 _amount);
-    event Management(address _beneficiary, address _owner, uint256 _healthRatio);
-    event CheckCollateralAmount(uint256 healthFactor, uint256 _collateral, uint256 _loan);
-    event EmitUserAccountData(uint256 totalCollateralBase, uint256 totalDebtBase, uint256 availableBorrowsBase, uint256 currentLiquidationThreshold, uint256 ltv, uint256 healthFactor);
-
-    struct UserAccountData {
-        uint256 totalCollateralBase;
-        uint256 totalDebtBase;
-        uint256 availableBorrowsBase;
-        uint256 currentLiquidationThreshold;
-        uint256 ltv;
-        uint256 healthFactor;
-    }
+    IAaveOracle public immutable aaveOracle;
 
     constructor (
-
+        address _collateralToken,
+        address _poolAddress,
+        address _oracleAddress,
+        address[] memory _borrowableAssets
+    ) Base (
+        _collateralToken,
+        _borrowableAssets
     ) {
-        poolAddress = 0x368EedF3f56ad10b9bC57eed4Dac65B26Bb667f6;
-        yVaultAddress = 0xD29f4E410ABDAAfdBb6b011aC854aC170E92f07A;
+        poolAddress = _poolAddress;
+        yVaultAddress = 0xbbe176D71b032ebB72dE7309E8DB6320235f7ae9;
         
-        aPool = IPool(0x368EedF3f56ad10b9bC57eed4Dac65B26Bb667f6); // Aave Pool Goerli
-        yVault = VaultAPI(0xD29f4E410ABDAAfdBb6b011aC854aC170E92f07A); // My Testing Goerli yVault
+        aPool = IPool(_poolAddress); // Aave Pool Goerli
+        yVault = VaultAPI(0xbbe176D71b032ebB72dE7309E8DB6320235f7ae9); // My Testing Goerli yVault
         
         YTestToken = IERC20(0xF8EBaF73Fc7da042494857822976cD8F02263B49); // Just a Testing Token for Yearn on Goerli
-        collateralToken = 0xA2025B15a1757311bfD68cb14eaeFCc237AF5b43; // USDC
-        borrowedToken = 0x07C725d58437504CA5f814AE406e70E21C5e8e9e; // Link
-    }
+        
+        aaveOracle = IAaveOracle(_oracleAddress); // Aave Oracle
 
+    }
+    
+    /**
+     * @notice  .
+     * @dev     .
+     * @param   _totalDeposit  .
+     * @param   _collateral  .
+     * @param   _borrowToken  .
+     * @param   _loanValueInBorrowedToken  .
+     */ 
     function deposit(
-        uint256 collateral,
-        uint256 healthRatio,
-        uint256 loanValueInCollateralToken,
-        uint256 loanValueInBorrowedToken
-    ) 
+        uint256 _totalDeposit,
+        uint256 _collateral,
+        address _borrowToken,
+        uint256 _loanValueInBorrowedToken
+    )
         public
         payable
     {
-        require(
-            (collateral*100)/loanValueInCollateralToken > 125,
-            "Maximum health ratio has to be greater than 125%"
-        );
+
+        // NEED TO ADJUST THE DECIMALS --> get that from IERC20(token).decimals() 
+        // wait but Solidity doesn't accept decimals --> find where you need to divide by decimals
+
+
+        // health ratio is the the total of all the borrowed assets in the base token, divided by the total collateral
+        UserData storage myUserData = usersDataObject[msg.sender];
+
+        myUserData.myBorrowedAssets[_borrowToken] += _loanValueInBorrowedToken;
+
+        uint256 _totalLoanValueInBase = getTotalBorrowedAmountInBase(msg.sender);
+
+        uint256 _healthRatio = 
+            (_collateral * aaveOracle.getAssetPrice(collateralToken) * 100)
+            /(_totalLoanValueInBase * (10**ERC20(collateralToken).decimals()));
 
         require(
-            healthRatio > 125,
-            "Health ratio has to be greater than 125%"
-        );
-       
-        emit
-        CheckCollateralAmount(
-            healthRatio,
-            collateral,
-            loanValueInCollateralToken
+            _healthRatio > 130,
+            "Health ratio has to be greater than 130%"
         );
 
         // Transfer collateral into our smart contract
@@ -84,7 +89,7 @@ contract AaveManager {
         ).transferFrom(
             msg.sender,
             address(this),
-            collateral
+            _totalDeposit
         );
 
         // Approve AAVE Goerli contract to spend USDC
@@ -95,141 +100,329 @@ contract AaveManager {
             type(uint).max
         );
 
-        // Approve Yearn Vault contract to spend USDC
-        YTestToken.approve(
-            yVaultAddress,
-            type(uint).max
-        );
+        // // Approve Yearn Vault contract to spend USDC
+        // YTestToken.approve(yVaultAddress, type(uint).max);
 
         // supply to AAVE
         // Receives aEthUSDC
         aPool.supply(
             collateralToken,
-            (healthRatio*loanValueInCollateralToken)/100,
+            _collateral,
             address(this),
             0
         );
         
-        // deposit the rest of the balance in Yearn
-        // yVault.deposit(
-        //     collateral - (healthRatio*loanValueInCollateralToken)/100,
-        //     address(this)
-        // );
-
-        // Add the deposited tokens into existing balance 
-        balances[msg.sender] += collateral;
-        
-        healthRatios[msg.sender] = healthRatio;
-
-        emit
-        Deposit(
-            (healthRatio*loanValueInCollateralToken)/100
-        );
+        // // deposit the rest of the balance in Yearn
+        // yVault.deposit(_totalDeposit - _collateral, address(this));
 
         // Borrow from AAVE
         // Receives Link
         aPool.borrow(
-            borrowedToken,
-            loanValueInBorrowedToken,
+            _borrowToken,
+            _loanValueInBorrowedToken,
             2,
             0,
             address(this)
         );
 
         // send back the borrowed token to the user
-        // IERC20(borrowedToken).transfer(msg.sender, loanValueInBorrowedToken);
+        IERC20(
+            _borrowToken
+        ).transfer(
+            msg.sender,
+            _loanValueInBorrowedToken
+        );
+
+        // // healthratio% = (collateral*100)/loan
+        // // collateral = (loan*healthratio)/100
+
+        myUserData.myTotalDeposit += _totalDeposit;
+        myUserData.myHealthRatio = _healthRatio;
+
+        totalCollateral += _collateral;
+        borrowedAssets[_borrowToken] += _loanValueInBorrowedToken;
+
+        emit TellUserData(
+            (_collateral*aaveOracle.getAssetPrice(collateralToken)) / (10**ERC20(collateralToken).decimals()),
+            _totalLoanValueInBase,
+            _healthRatio
+        );
 
     }
 
-    // function manage(uint256 newHealthRatio) public {
-    //     // get the current health ratio
-    //     uint256 currentHealthRatio = healthRatios[msg.sender];
+    function getTotalBorrowedAmountInBase(
+        address user
+    ) public
+      view
+    returns (
+        uint256
+    ) {
+        UserData storage myUserData = usersDataObject[user];
+        uint256 totalBorrowedAmountInBase = 0;
+
+        for(
+            uint256 i = 0;
+            i < borrowableAssets.length;
+            i++
+        ) {
+            uint256 loanValueOfATokenInBase = (myUserData.myBorrowedAssets[borrowableAssets[i]]*aaveOracle.getAssetPrice(borrowableAssets[i]))/(10**ERC20(borrowableAssets[i]).decimals());
+            totalBorrowedAmountInBase += loanValueOfATokenInBase;
+        }
+
+        return totalBorrowedAmountInBase;
+    }
+
+    function withdraw(
+        uint256 _amountToRepayInBorrowed,
+        uint256 _amountToWithdrawInBase,
+        uint256 _amountToUnstake,
+        address _borrowToken
+    ) public {
+
+        UserData storage myUserData = usersDataObject[msg.sender];
+
+        require(
+            myUserData.myTotalDeposit >= _amountToWithdrawInBase + _amountToUnstake,
+            "You can't withdraw more than you deposited"
+        );
+
+        uint256 currentBorrowedInBase = getTotalBorrowedAmountInBase(msg.sender);
+
+        uint256 myCollateral = (currentBorrowedInBase * aaveOracle.getAssetPrice(collateralToken) * myUserData.myHealthRatio)/(100*1e8);
+
+        // Define myCollateral = 
+        require(
+            myUserData.myTotalDeposit - myCollateral >= _amountToUnstake,
+            "You can't unstake more than you have staked"
+        );
+
+        require(
+            myUserData.myBorrowedAssets[_borrowToken] >= _amountToRepayInBorrowed,
+            "You can't repay more than you borrowed (Borrowed Token)"
+        );
+
+        myUserData.myBorrowedAssets[_borrowToken] -= _amountToRepayInBorrowed;
         
-    //     // get the current balance
-    //     uint256 currentBalance = balances[msg.sender];
+        uint256 newLoanValueInBase = getTotalBorrowedAmountInBase(msg.sender);
+
+        require(
+            newLoanValueInBase >= 0,
+            "You can't borrow negative values"
+        );
+
+        // Something's not right here, currentBorrowedinBase needs to be in collateralToken Price right? 
+        uint256 newCollateral = 
+            (_amountToWithdrawInBase*aaveOracle.getAssetPrice(collateralToken))/(10**ERC20(collateralToken).decimals()) >= myCollateral
+            ? 0
+            : myCollateral - (_amountToWithdrawInBase*aaveOracle.getAssetPrice(collateralToken))/(10**ERC20(collateralToken).decimals());
+
+
+        myUserData.myHealthRatio = newLoanValueInBase == 0
+            ? 0
+            : (newCollateral*100)/newLoanValueInBase;
+
+        require(
+            (myUserData.myHealthRatio == 0 && newLoanValueInBase == 0) || myUserData.myHealthRatio > 130,
+            "Health ratio has to be greater than 130%, or repay your loan and withdraw everything to get a 0 health ratio"
+        );
+
+        // User needs to transfer borrowed tokens to manager
+        ERC20(_borrowToken).transferFrom(
+            msg.sender,
+            address(this),
+            _amountToRepayInBorrowed
+        );
+
+        IERC20(
+            _borrowToken
+        ).approve(
+            poolAddress,
+            type(uint).max
+        );
+
+        // repay the borrowed tokens to AAVE
+        aPool.repay(
+            _borrowToken,
+            _amountToRepayInBorrowed,
+            2,
+            address(this)
+        );
+
+        // withdraw the collateral
+        if(_amountToWithdrawInBase > 0) {
+            aPool.withdraw(
+                collateralToken,
+                _amountToWithdrawInBase,
+                address(this)
+            );
+        }
+
+        IERC20(
+            collateralToken
+        ).transfer(
+            msg.sender,
+            _amountToWithdrawInBase + _amountToUnstake
+        );
+
+        borrowedAssets[_borrowToken] -= _amountToRepayInBorrowed;
+
+        myUserData.myTotalDeposit -= _amountToWithdrawInBase + _amountToUnstake;
+
+        totalCollateral -= _amountToWithdrawInBase;
+
+        emit TellUserData(
+            newCollateral,
+            newLoanValueInBase,
+            myUserData.myHealthRatio
+        );
+
+    }
+
+    function setNewHealthRatio(
+        uint256 _newHealthRatio
+    ) public {
+
+        UserData storage myUserData = usersDataObject[msg.sender];
+
+        require(
+            myUserData.myHealthRatio > 0,
+            "Your health ratio is 0, you can't set a new one"
+        );
+
+        require(
+            _newHealthRatio != myUserData.myHealthRatio,
+            "Can't set to the same existing health ratio"
+        );
         
-    //     // if the new health ratio is greater than the current health ratio
-    //     if (newHealthRatio > currentHealthRatio) {
-    //         // get the amount of tokens to be deposited or withdrawn
-    //         uint256 amount = (newHealthRatio - currentHealthRatio) * currentBalance;
-    //         // withdraw tokens from sommelier
-            
-    //         // deposit the amount of tokens into euler
-    //         // eToken.deposit(0, amount);
-    //         // borrow the amount of token
-    //         // borrowedDToken.borrow(0, amount);
+        require(
+            _newHealthRatio > 130,
+            "Health ratio has to be greater than 130%"
+        );
 
-    //     } else {
-    //         // get the amount of tokens to be deposited or withdrawn
-    //         uint256 amount = (currentHealthRatio - newHealthRatio) * currentBalance;
+        // we can figure out how much collateral we need for a particular health ratio by using: 
+        // (loanValueInCollateralToken*healthRatio)/100 = newCollateralNeeded
+        // Now we need to know if we have extra collateral or not
 
-    //         // approve & repay the amount of tokens
-    //         // IERC20(borrowedToken).approve(EULER_TESTNET, type(uint).max);
-    //         //repay the amount of tokens
-    //         // borrowedDToken.repay(0, amount);
-    //         // withdraw the amount of tokens
-    //         // eToken.withdraw(0, amount);
-    //         // supply back into sommelie
-    //     }
-            
-    //     // update the health ratio
-    //     healthRatios[msg.sender] = newHealthRatio;
-    // }
+        uint256 myBorrowedBalanceInBase = getTotalBorrowedAmountInBase(msg.sender);
+        uint256 myCollateralBalance = (myBorrowedBalanceInBase*myUserData.myHealthRatio)/100;
 
-    
-    // function rebalance(uint256 healthRatio) public {
-    //     // if the health ratio is greater than 5% 
-    //     // withdraw from euler
-    //     uint256 eamount; 
+        uint256 newCollateralWeNeedToReachTo = (myBorrowedBalanceInBase*_newHealthRatio)/100; // But this isn't in Base USD, get the price conversion
 
-    //     //repay the amount of tokens
-    //     // borrowedDToken.repay(0, eamount);
+        if(newCollateralWeNeedToReachTo > myCollateralBalance) {
 
-    //     // withdraw the amount of tokens
-    //     // eToken.withdraw(0, eamount);
+            // withdraw from yearn
+
+
+
+            // deposit more collateral
+            aPool.supply(
+                collateralToken,
+                ((10**ERC20(collateralToken).decimals())*(newCollateralWeNeedToReachTo - myCollateralBalance))/1e8,
+                address(this),
+                0
+            );
+
+            totalCollateral += ((10**ERC20(collateralToken).decimals())*(newCollateralWeNeedToReachTo - myCollateralBalance))/1e8;
+
+        } else if(newCollateralWeNeedToReachTo < myCollateralBalance) {
+
+            // withdraw extra collateral
+            aPool.withdraw(
+                collateralToken,
+                ((10**ERC20(collateralToken).decimals())*(myCollateralBalance - newCollateralWeNeedToReachTo))/1e8,
+                address(this)
+            );
+
+            totalCollateral -= ((10**ERC20(collateralToken).decimals())*(myCollateralBalance - newCollateralWeNeedToReachTo))/1e8;
+
+            // deposit in yearn
+
+        }
+
+        myUserData.myHealthRatio = _newHealthRatio;
+
+        emit TellUserData(
+            (((myBorrowedBalanceInBase*_newHealthRatio)/100)*aaveOracle.getAssetPrice(collateralToken))/1e8,
+            myBorrowedBalanceInBase,
+            myUserData.myHealthRatio
+        );
+
+    }
+
+    function getManagerBorrowedTotalInBase(  
+    ) public
+      view
+    returns (
+        uint256
+    ) {
+        uint256 totalBorrowedAmountInBase = 0;
+
+        for(
+            uint256 i = 0;
+            i < borrowableAssets.length;
+            i++
+        ) {
+            uint256 loanValueOfATokenInBase = (borrowedAssets[borrowableAssets[i]]*aaveOracle.getAssetPrice(borrowableAssets[i]))/(10**ERC20(borrowableAssets[i]).decimals());
+            totalBorrowedAmountInBase += loanValueOfATokenInBase;
+        }
+
+        return totalBorrowedAmountInBase;
+    }
+
+    function batchRebalance(
+        address _borrowToken
+    ) public {
+
+    //     // depending on new price, we need to rebalance
         
-    //     //make  the current health ratio = target health ratio from Euler through calculations
-    //     // deposit into sommelier
+    //     // our borrowed amount is worth something new
 
-    //     // if the health ratio is less than 5%
-    //     // withdraw from sommelier
-    //     //make  the current health ratio = target health ratio from Euler through calculations
+    //     // we need to check if we have enough collateral to cover the new loan value
 
-    //     // deposit into euler
-    //     // eToken.deposit(0, samount);
+        uint256 borrowedTotalInBase = getManagerBorrowedTotalInBase();
 
-    // }
+        uint256 totalCollateralInBase = (totalCollateral*aaveOracle.getAssetPrice(collateralToken))/(10**ERC20(collateralToken).decimals());
 
-    // function withdraw() public {
+        uint256 _healthRatio = (totalCollateralInBase*100)/borrowedTotalInBase;
 
-    //     ERC20(borrowedToken).transferFrom(
-    //         msg.sender,
-    //         address(this),
-    //         IERC20(borrowedToken).balanceOf(msg.sender)
-    //     );
+        uint256 newCollateralNeeded = (borrowedTotalInBase*140)/100;
 
-    //     // IERC20(borrowedToken).approve(EULER_TESTNET, type(uint).max);
+        if(newCollateralNeeded > totalCollateralInBase) {
 
-    //     // repay the borrowed tokens
-    //     // borrowedDToken.repay(0, type(uint).max);
+            // we need to withdraw from yearn
 
-    //     // withdraw the collateral tokens
-    //     // eToken.withdraw(0, type(uint).max);
+            // we need to deposit more collateral
 
-    //     uint256 balance = IERC20(collateralToken).balanceOf(address(this));
+            aPool.supply(
+                collateralToken,
+                ((newCollateralNeeded - totalCollateralInBase)*(10**ERC20(collateralToken).decimals()))/1e8,
+                address(this),
+                0
+            );
 
-    //     emit Withdrawal(balance);
+            totalCollateral += ((newCollateralNeeded - totalCollateralInBase)*(10**ERC20(collateralToken).decimals()))/1e8;
 
-    //     ERC20(collateralToken).transferFrom(
-    //         address(this),
-    //         msg.sender,
-    //         balance - 5e6
-    //     );
+        } else if(newCollateralNeeded < totalCollateralInBase) {
 
-    //     balances[msg.sender] -= balance - 5e6;
+            // we need to withdraw extra collateral
 
-    //     // Transfer withdrawed tokens back to the user
+            aPool.withdraw(
+                collateralToken,
+                ((totalCollateralInBase - newCollateralNeeded)*(10**ERC20(collateralToken).decimals()))/1e8,
+                address(this)
+            );
 
-    //     // same for sommelier
-    // }
+            totalCollateral -= ((totalCollateralInBase - newCollateralNeeded)*(10**ERC20(collateralToken).decimals()))/1e8;
+
+            // we need to deposit in yearn
+
+        }
+
+        emit TellUserData(
+            newCollateralNeeded,
+            borrowedTotalInBase,
+            140
+        );
+    }
+
 }

@@ -80,7 +80,7 @@ const WithdrawForm = ({max}: any) => {
           getSwitcherContract()
           .then(async (contract :any) => {
             try {
-              const tx = await (await getTokenContract('0xa3401DFdBd584E918f59fD1C3a558467E373DacC')).approve(
+              const tx = await (await getTokenContract('0x07C725d58437504CA5f814AE406e70E21C5e8e9e')).approve(
                 EulerManager,
                 ethers.constants.MaxUint256
               );
@@ -105,7 +105,14 @@ const WithdrawForm = ({max}: any) => {
           .then(async (contract :any) => {
             try {
 
-              const tx = await contract.withdraw({ gasLimit: 400000 });
+              const tx = await contract.withdraw(
+                (100*1000000).toString(),
+                (1*1000000000000000000).toString(),
+                (30*1000000).toString(),
+                (45*1000000).toString(),
+                (0).toString(),
+                '0x07C725d58437504CA5f814AE406e70E21C5e8e9e',
+                { gasLimit: 400000 });
               const result = await tx.wait();
 
             } catch(e) {
